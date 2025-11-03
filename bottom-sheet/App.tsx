@@ -1,11 +1,9 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import type { ComponentRef } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, {
-  Extrapolation,
-  interpolate,
   runOnJS,
   useAnimatedReaction,
   useAnimatedStyle,
@@ -13,6 +11,15 @@ import Animated, {
   type WithSpringConfig,
 } from 'react-native-reanimated';
 import BottomSheet, { BottomSheetModalProvider, BottomSheetView } from '@gorhom/bottom-sheet';
+
+const SNAP_POINTS = ['40%'];
+const BACKDROP_OPACITY = 0.55;
+const BACKDROP_COLOR = 'rgba(0, 0, 0, 1)';
+const SPRING_CONFIG: WithSpringConfig = {
+  damping: 32,
+  stiffness: 320,
+  mass: 0.7,
+};
 
 type BottomSheetRef = ComponentRef<typeof BottomSheet>;
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
@@ -24,19 +31,10 @@ export default function App() {
   const animatedIndex = useSharedValue(-1);
 
   // Snap points at 40% of the screen
-  const snapPoints = useMemo(() => ["40%"], []);
+  const snapPoints = SNAP_POINTS;
 
   // Faster spring config keeps the close animation snappy without noticeable bounce
-  const animationConfigs = useMemo<WithSpringConfig>(
-    () => ({
-      damping: 32,
-      stiffness: 320,
-      mass: 0.7,
-      restDisplacementThreshold: 0.1,
-      restSpeedThreshold: 0.1,
-    }),
-    []
-  );
+  const animationConfigs = SPRING_CONFIG;
 
   // Button handler to open the bottom sheet
   const handleOpenBottomSheet = useCallback(() => {
@@ -51,8 +49,9 @@ export default function App() {
   }, []);
 
   const backdropAnimatedStyle = useAnimatedStyle(() => {
-    const opacity = interpolate(animatedIndex.value, [-1, 0], [0, 0.55], Extrapolation.CLAMP);
-    return { opacity };
+    const progress = animatedIndex.value + 1;
+    const clampedProgress = progress < 0 ? 0 : progress > 1 ? 1 : progress;
+    return { opacity: clampedProgress * BACKDROP_OPACITY };
   }, []);
 
   useAnimatedReaction(
@@ -112,12 +111,12 @@ export default function App() {
             >
               <Text style={styles.closeButtonText}>X</Text>
             </TouchableOpacity>
-            <Text style={styles.bottomSheetTitle}>Gorhom Bottom-Sheet</Text>
+            <Text style={styles.bottomSheetTitle}>Hello from Bottom Sheet</Text>
             <Text style={styles.bottomSheetText}>
               This bottom sheet is fully working in both Android and iOS!
             </Text>            
             <Text style={styles.bottomSheetText}>
-              Swipe, tap the X button, or tap outside to close it.
+              Swipe, tap the X button, or tap outside to close the bottom sheet.
             </Text>
           </BottomSheetView>
         </BottomSheet>
@@ -213,6 +212,6 @@ const styles = StyleSheet.create({
   },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 1)',
+    backgroundColor: BACKDROP_COLOR,
   },
 });
