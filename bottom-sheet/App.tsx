@@ -71,6 +71,8 @@ export default function App() {
           index={-1} // Closed at start
           snapPoints={snapPoints}
           enablePanDownToClose={true}
+          enableOverDrag={false} // Prevent partial second stage
+          enableDynamicSizing={false} // Keep the sheet fixed at the 40% snap point
           backgroundStyle={styles.bottomSheetBackground}
           handleIndicatorStyle={styles.handleIndicator}
           onChange={handleSheetChange}
