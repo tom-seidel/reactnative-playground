@@ -1,7 +1,7 @@
-import { useCallback, useMemo, useRef } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import type { ComponentRef } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Dimensions, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import BottomSheet, {
   BottomSheetModalProvider,
@@ -12,19 +12,27 @@ type BottomSheetRef = ComponentRef<typeof BottomSheet>;
 
 export default function App() {
   const bottomSheetRef = useRef<BottomSheetRef>(null);
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const screenHeight = Dimensions.get('window').height;
 
   // Snap points bei 40% des Bildschirms
-  const snapPoints = useMemo(() => ['40%'], []);
+const snapPoints = useMemo(() => ["40%"], []);
 
   // Button Handler um das Bottom-Sheet zu öffnen
   const handleOpenBottomSheet = useCallback(() => {
     const sheet = bottomSheetRef.current;
     sheet?.expand();
+    setIsSheetOpen(true);
   }, []);
 
   const handleCloseBottomSheet = useCallback(() => {
     const sheet = bottomSheetRef.current;
     sheet?.close();
+    setIsSheetOpen(false);
+  }, []);
+
+  const handleSheetChange = useCallback((index: number) => {
+    setIsSheetOpen(index >= 0);
   }, []);
 
   return (
@@ -44,6 +52,14 @@ export default function App() {
           <Text style={styles.buttonText}>Open</Text>
         </TouchableOpacity>
 
+        {isSheetOpen && (
+          <Pressable
+            style={styles.backdrop}
+            onPress={handleCloseBottomSheet}
+            accessibilityLabel="Sheet schließen durch Tippen auf Hintergrund"
+          />
+        )}
+
         {/* Bottom-Sheet */}
         <BottomSheet
           ref={bottomSheetRef}
@@ -52,6 +68,7 @@ export default function App() {
           enablePanDownToClose={true}
           backgroundStyle={styles.bottomSheetBackground}
           handleIndicatorStyle={styles.handleIndicator}
+          onChange={handleSheetChange}
         >
           <BottomSheetView style={styles.bottomSheetContent}>
             <TouchableOpacity
@@ -157,5 +174,9 @@ const styles = StyleSheet.create({
     color: '#666',
     textAlign: 'center',
     marginTop: 16,
+  },
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
 });
