@@ -8,6 +8,8 @@ import BottomSheet, {
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 
 export default function App() {
+  // Read the bottom note in styles for Android devices!
+
   const bottomSheetRef = useRef<BottomSheet>(null);
   const snapPoints = useMemo(() => ['40%'], []);
 
@@ -19,8 +21,8 @@ export default function App() {
     (props: BottomSheetBackdropProps) => (
       <BottomSheetBackdrop
         {...props}
-        disappearsOnIndex={0}
-        appearsOnIndex={1}
+        disappearsOnIndex={-1}
+        appearsOnIndex={0}
         pressBehavior="close"
       />
     ),
@@ -40,7 +42,7 @@ export default function App() {
 
         <BottomSheet
           ref={bottomSheetRef}
-          index={0}
+          index={-1}
           snapPoints={snapPoints}
           enablePanDownToClose
           backdropComponent={renderBackdrop}
@@ -74,6 +76,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 999,
     alignItems: 'center',
+    zIndex: 10, // This is very hacky, but it works on Android. Otherwise the BottomSheet won't open at all!
   },
   openButtonText: {
     color: '#ffffff',
