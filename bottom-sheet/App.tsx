@@ -1,110 +1,84 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
-import type { ComponentRef } from 'react';
-import { StatusBar } from 'expo-status-bar';
-import { Dimensions, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+// App.tsx (or your Screen)
+import React, { useMemo, useRef, useCallback } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import BottomSheet, {
-  BottomSheetModalProvider,
   BottomSheetView,
+  BottomSheetBackdrop,
+  BottomSheetBackdropProps,
 } from '@gorhom/bottom-sheet';
 
-type BottomSheetRef = ComponentRef<typeof BottomSheet>;
-
 export default function App() {
-  const bottomSheetRef = useRef<BottomSheetRef>(null);
-  const [isSheetOpen, setIsSheetOpen] = useState(false);
-  const screenHeight = Dimensions.get('window').height;
+  const sheetRef = useRef<BottomSheet>(null);
 
-  // Snap points bei 40% des Bildschirms
-const snapPoints = useMemo(() => ["40%"], []);
+  // One open detent at 40%. Closed is index = -1 (no "0%" in snapPoints).
+  const snapPoints = useMemo(() => ['40%'], []);
 
-  // Button Handler um das Bottom-Sheet zu öffnen
-  const handleOpenBottomSheet = useCallback(() => {
-    const sheet = bottomSheetRef.current;
-    sheet?.expand();
-    setIsSheetOpen(true);
+  const openSheet = useCallback(() => {
+    // Either works. snapToIndex(0) is explicit for "40%".
+    sheetRef.current?.snapToIndex(0);
+    // sheetRef.current?.expand();
   }, []);
 
-  const handleCloseBottomSheet = useCallback(() => {
-    const sheet = bottomSheetRef.current;
-    sheet?.close();
-    setIsSheetOpen(false);
+  const closeSheet = useCallback(() => {
+    sheetRef.current?.close();
   }, []);
 
-  const handleSheetChange = useCallback((index: number) => {
-    setIsSheetOpen(index >= 0);
-  }, []);
+  const renderBackdrop = useCallback(
+    (props: BottomSheetBackdropProps) => (
+      <BottomSheetBackdrop
+        {...props}
+        appearsOnIndex={0}
+        disappearsOnIndex={-1}
+        pressBehavior="close"     // tap outside closes
+        opacity={0.5}
+      />
+    ),
+    []
+  );
 
   return (
     <GestureHandlerRootView style={styles.container}>
-      <BottomSheetModalProvider>
-        <View style={styles.content}>
-          <Text style={styles.text}>Bottom-Sheet Test Projekt</Text>
-          <StatusBar style="auto" />
-        </View>
+      {/* Your content */}
+      <View style={styles.content}>
+        <Text style={styles.title}>Bottom-Sheet Test Projekt</Text>
+      </View>
 
-        {/* Roter Button unten */}
-        <TouchableOpacity
-          style={styles.redButton}
-          onPress={handleOpenBottomSheet}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.buttonText}>Open</Text>
-        </TouchableOpacity>
+      {/* RED BUTTON at bottom */}
+      <TouchableOpacity style={styles.redButton} onPress={openSheet} activeOpacity={0.85}>
+        <Text style={styles.buttonText}>Open</Text>
+      </TouchableOpacity>
 
-        {isSheetOpen && (
-          <Pressable
-            style={styles.backdrop}
-            onPress={handleCloseBottomSheet}
-            accessibilityLabel="Sheet schließen durch Tippen auf Hintergrund"
-          />
-        )}
+      {/* Bottom Sheet */}
+      <BottomSheet
+        ref={sheetRef}
+        index={-1}                      // start closed
+        snapPoints={snapPoints}         // only 40% open
+        enablePanDownToClose            // swipe → close (-1)
+        enableOverDrag={false}          // removes bouncy “mid” feel
+        enableDynamicSizing={false}
+        backdropComponent={renderBackdrop}
+        backgroundStyle={styles.bottomSheetBackground}
+        handleIndicatorStyle={styles.handleIndicator}
+      >
+        <BottomSheetView style={styles.bottomSheetContent}>
+          <TouchableOpacity onPress={closeSheet} style={styles.closeButton} hitSlop={8}>
+            <Text style={styles.closeButtonText}>X</Text>
+          </TouchableOpacity>
 
-        {/* Bottom-Sheet */}
-        <BottomSheet
-          ref={bottomSheetRef}
-          index={-1} // Geschlossen beim Start
-          snapPoints={snapPoints}
-          enablePanDownToClose={true}
-          backgroundStyle={styles.bottomSheetBackground}
-          handleIndicatorStyle={styles.handleIndicator}
-          onChange={handleSheetChange}
-        >
-          <BottomSheetView style={styles.bottomSheetContent}>
-            <TouchableOpacity
-              onPress={handleCloseBottomSheet}
-              style={styles.closeButton}
-              hitSlop={8}
-              accessibilityLabel="Sheet schließen"
-            >
-              <Text style={styles.closeButtonText}>X</Text>
-            </TouchableOpacity>
-            <Text style={styles.bottomSheetTitle}>Gorhom Bottom-Sheet 🎉</Text>
-            <Text style={styles.bottomSheetText}>
-              Swipe down to close
-            </Text>
-          </BottomSheetView>
-        </BottomSheet>
-      </BottomSheetModalProvider>
+          <Text style={styles.bottomSheetTitle}>Gorhom Bottom-Sheet 🎉</Text>
+          <Text style={styles.bottomSheetText}>Swipe down or tap outside to close</Text>
+        </BottomSheetView>
+      </BottomSheet>
     </GestureHandlerRootView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  content: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  text: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#333',
-  },
+  container: { flex: 1, backgroundColor: '#f5f5f5' },
+  content: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  title: { fontSize: 20, fontWeight: '600', color: '#333' },
+
   redButton: {
     position: 'absolute',
     bottom: 40,
@@ -116,67 +90,20 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 8,
+    zIndex: Platform.select({ android: 0, ios: undefined }),
   },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  bottomSheetBackground: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-  },
-  handleIndicator: {
-    backgroundColor: '#ccc',
-    width: 40,
-  },
-  bottomSheetContent: {
-    flex: 1,
-    padding: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: '100%',
-    position: 'relative',
-  },
-  bottomSheetTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    marginBottom: 0,
-    color: '#333',
-    textAlign: 'center',
-    marginTop: 32,
-    paddingHorizontal: 24,
-  },
-  closeButton: {
-    position: 'absolute',
-    top: 0,
-    right: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 999,
-    backgroundColor: '#f0f0f0',
-  },
-  closeButtonText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#333',
-  },
-  bottomSheetText: {
-    fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
-    marginTop: 16,
-  },
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
+  buttonText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+
+  bottomSheetBackground: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24 },
+  handleIndicator: { backgroundColor: '#ccc', width: 40 },
+  bottomSheetContent: { flex: 1, padding: 24, alignItems: 'center', justifyContent: 'center', width: '100%', position: 'relative' },
+  bottomSheetTitle: { fontSize: 24, fontWeight: '700', color: '#333', textAlign: 'center', marginTop: 32, paddingHorizontal: 24 },
+  bottomSheetText: { fontSize: 16, color: '#666', textAlign: 'center', marginTop: 16 },
+
+  closeButton: { position: 'absolute', top: 0, right: 12, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, backgroundColor: '#f0f0f0' },
+  closeButtonText: { fontSize: 16, fontWeight: '700', color: '#333' },
 });
