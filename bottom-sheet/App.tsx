@@ -3,6 +3,7 @@ import type { ComponentRef } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { Dimensions, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import type { WithSpringConfig } from 'react-native-reanimated';
 import BottomSheet, {
   BottomSheetModalProvider,
   BottomSheetView,
@@ -21,6 +22,18 @@ export default function App() {
   // Snap points at 40% of the screen
   const snapPoints = useMemo(() => ["40%"], []);
 
+  // Faster spring config keeps the close animation snappy without noticeable bounce
+  const animationConfigs = useMemo<WithSpringConfig>(
+    () => ({
+      damping: 32,
+      stiffness: 320,
+      mass: 0.7,
+      restDisplacementThreshold: 0.1,
+      restSpeedThreshold: 0.1,
+    }),
+    []
+  );
+
   // Button handler to open the bottom sheet
   const handleOpenBottomSheet = useCallback(() => {
     const sheet = bottomSheetRef.current;
@@ -32,6 +45,11 @@ export default function App() {
   const handleCloseBottomSheet = useCallback(() => {
     const sheet = bottomSheetRef.current;
     sheet?.close();
+    setIsSheetOpen(false);
+  }, []);
+
+  // Ensure state resets when the sheet finishes closing
+  const handleSheetClosed = useCallback(() => {
     setIsSheetOpen(false);
   }, []);
 
@@ -75,7 +93,9 @@ export default function App() {
           enableDynamicSizing={false} // Keep the sheet fixed at the 40% snap point
           backgroundStyle={styles.bottomSheetBackground}
           handleIndicatorStyle={styles.handleIndicator}
+          animationConfigs={animationConfigs}
           onChange={handleSheetChange}
+          onClose={handleSheetClosed}
         >
           <BottomSheetView style={styles.bottomSheetContent}>
             <TouchableOpacity
