@@ -1,23 +1,27 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 import type { ComponentRef } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { Dimensions, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import type { WithSpringConfig } from 'react-native-reanimated';
-import BottomSheet, {
-  BottomSheetModalProvider,
-  BottomSheetView,
-} from '@gorhom/bottom-sheet';
+import Animated, {
+  Extrapolation,
+  interpolate,
+  runOnJS,
+  useAnimatedReaction,
+  useAnimatedStyle,
+  useSharedValue,
+  type WithSpringConfig,
+} from 'react-native-reanimated';
+import BottomSheet, { BottomSheetModalProvider, BottomSheetView } from '@gorhom/bottom-sheet';
 
 type BottomSheetRef = ComponentRef<typeof BottomSheet>;
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export default function App() {
   // Ref to control the bottom sheet
   const bottomSheetRef = useRef<BottomSheetRef>(null);
-  // State to track if the sheet is open
-  const [isSheetOpen, setIsSheetOpen] = useState(false);
-  // Get screen height for potential dynamic calculations
-  const screenHeight = Dimensions.get('window').height;
+  const [backdropPointerEvents, setBackdropPointerEvents] = useState<'auto' | 'none'>('none');
+  const animatedIndex = useSharedValue(-1);
 
   // Snap points at 40% of the screen
   const snapPoints = useMemo(() => ["40%"], []);
@@ -38,25 +42,29 @@ export default function App() {
   const handleOpenBottomSheet = useCallback(() => {
     const sheet = bottomSheetRef.current;
     sheet?.expand();
-    setIsSheetOpen(true);
   }, []);
 
   // Handler to close the bottom sheet
   const handleCloseBottomSheet = useCallback(() => {
     const sheet = bottomSheetRef.current;
     sheet?.close();
-    setIsSheetOpen(false);
   }, []);
 
-  // Ensure state resets when the sheet finishes closing
-  const handleSheetClosed = useCallback(() => {
-    setIsSheetOpen(false);
+  const backdropAnimatedStyle = useAnimatedStyle(() => {
+    const opacity = interpolate(animatedIndex.value, [-1, 0], [0, 0.55], Extrapolation.CLAMP);
+    return { opacity };
   }, []);
 
-  // Callback when the sheet changes index
-  const handleSheetChange = useCallback((index: number) => {
-    setIsSheetOpen(index >= 0);
-  }, []);
+  useAnimatedReaction(
+    () => animatedIndex.value >= 0,
+    (isActive, previous) => {
+      if (isActive === previous) {
+        return;
+      }
+      runOnJS(setBackdropPointerEvents)(isActive ? 'auto' : 'none');
+    },
+    []
+  );
 
   return (
     <GestureHandlerRootView style={styles.container}>
@@ -75,13 +83,12 @@ export default function App() {
           <Text style={styles.buttonText}>Open</Text>
         </TouchableOpacity>
 
-        {isSheetOpen && (
-          <Pressable
-            style={styles.backdrop}
-            onPress={handleCloseBottomSheet}
-            accessibilityLabel="Close sheet by tapping on background"
-          />
-        )}
+        <AnimatedPressable
+          style={[styles.backdrop, backdropAnimatedStyle]}
+          pointerEvents={backdropPointerEvents}
+          onPress={handleCloseBottomSheet}
+          accessibilityLabel="Close sheet by tapping on background"
+        />
 
         {/* Bottom Sheet */}
         <BottomSheet
@@ -94,8 +101,7 @@ export default function App() {
           backgroundStyle={styles.bottomSheetBackground}
           handleIndicatorStyle={styles.handleIndicator}
           animationConfigs={animationConfigs}
-          onChange={handleSheetChange}
-          onClose={handleSheetClosed}
+          animatedIndex={animatedIndex}
         >
           <BottomSheetView style={styles.bottomSheetContent}>
             <TouchableOpacity
@@ -207,6 +213,6 @@ const styles = StyleSheet.create({
   },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 1)',
   },
 });
